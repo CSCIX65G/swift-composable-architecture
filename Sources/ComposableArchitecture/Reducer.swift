@@ -407,6 +407,26 @@ public struct Reducer<State, Action, Environment> {
     }
   }
 
+    public func forEach<GlobalState, GlobalAction, GlobalEnvironment>(
+      state toLocalState: WritableKeyPath<GlobalState, State>,
+      action toLocalAction: CasePath<GlobalAction, (Int, Action)>,
+      environment toLocalEnvironment: @escaping (GlobalEnvironment) -> Environment,
+      _ file: StaticString = #file,
+      _ line: UInt = #line
+    ) -> Reducer<GlobalState, GlobalAction, GlobalEnvironment> {
+      .init { globalState, globalAction, globalEnvironment in
+        guard let (index, localAction) = toLocalAction.extract(from: globalAction) else {
+          return .none
+        }
+        return self.reducer(
+          &globalState[keyPath: toLocalState],
+          localAction,
+          toLocalEnvironment(globalEnvironment)
+        )
+        .map { toLocalAction.embed((index, $0)) }
+      }
+    }
+
   /// A version of `pullback` that transforms a reducer that works on an element into one that works
   /// on an identified array of elements.
   ///
